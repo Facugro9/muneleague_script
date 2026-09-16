@@ -1,8 +1,11 @@
-    import os
+import os
 import requests
 from bs4 import BeautifulSoup
 from telegram import Update
 from telegram.ext import ApplicationBuildder, CommandHandler, ContextTypes
+import threading
+from http.server import BaseHTTPRequestHandler, HTTPServer
+
 
 # The URL of the pitch booking page (Replace with the real website URL)
 URL = "https://atcsports.io/venues/comu-caba?sportIds=4&placeId=69y7pkx6v&dia=2026-09-12&horario=18%3A00&locationName=Buenos+Aires%2C+Ciudad+Aut%C3%B3noma+de+Buenos+Aires%2C+Argentina&placeSearched=69y7pkx6v"
@@ -100,6 +103,34 @@ async def stop_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 if __name__ == '__main__':
     # Using your token directly for local testing
     bot_token = "8997472269:AAEUrwPpZAGdqhgBuZLuebNaCcoD748CZkk"
+    
+    app = ApplicationBuilder().token(bot_token).build()
+    
+    app.add_handler(CommandHandler("check", check_command))
+    app.add_handler(CommandHandler("stop", stop_command))
+    
+    print("Bot is online and listening...")
+    app.run_polling()
+
+
+class DummyServer(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.end_headers()
+        self.wfile.write(b"Bot is alive!")
+
+def keep_alive():
+    # Render assigns a port dynamically; we catch it here
+    port = int(os.environ.get("PORT", 8080))
+    server = HTTPServer(('', port), DummyServer)
+    server.serve_forever()
+
+if __name__ == '__main__':
+    # Start the dummy web server in the background
+    threading.Thread(target=keep_alive, daemon=True).start()
+    
+    # Grab the token securely
+    bot_token = os.environ.get("TELEGRAM_BOT_TOKEN")
     
     app = ApplicationBuilder().token(bot_token).build()
     
