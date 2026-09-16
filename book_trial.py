@@ -120,9 +120,12 @@ class DummyServer(BaseHTTPRequestHandler):
         self.wfile.write(b"Bot is alive!")
 
 def keep_alive():
-    # Render assigns a port dynamically; we catch it here
-    port = int(os.environ.get("PORT", 8080))
-    server = HTTPServer(('', port), DummyServer)
+    # Render sets the PORT environment variable automatically
+    port = int(os.environ.get("PORT", 10000))
+    
+    # Explicitly bind to 0.0.0.0 so Render can see it!
+    server = HTTPServer(('0.0.0.0', port), DummyServer)
+    print(f"Dummy server listening on port {port}...", flush=True)
     server.serve_forever()
 
 if __name__ == '__main__':
@@ -137,5 +140,5 @@ if __name__ == '__main__':
     app.add_handler(CommandHandler("check", check_command))
     app.add_handler(CommandHandler("stop", stop_command))
     
-    print("Bot is online and listening...")
+    print("Telegram Bot is online and listening...", flush=True)
     app.run_polling()
