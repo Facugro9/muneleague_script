@@ -2,7 +2,7 @@ import os
 import requests
 from bs4 import BeautifulSoup
 from telegram import Update
-from telegram.ext import ApplicationBuildder, CommandHandler, ContextTypes
+from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 import threading
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
