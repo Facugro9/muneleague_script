@@ -49,12 +49,12 @@ async def check_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         context.chat_data['date'] = date
         context.chat_data['time_range'] = time_range
         
-        await update.message.reply_text(f"Will check for {date} at {time_range} every 30 minutes!")
+        await update.message.reply_text(f"Will check for {date} at {time_range} every 5 minutes!")
         
-        # Start a background timer that runs the scraper function every 1800 seconds (30 mins)
+        # Start a background timer that runs the scraper function every 300 seconds (5 mins)
         context.job_queue.run_repeating(
             scrape_and_notify, 
-            interval=1800, 
+            interval=300, 
             first=1, # Run the first check almost immediately
             chat_id=update.message.chat_id,
             name=str(update.message.chat_id) # Name the job so we can stop it later
