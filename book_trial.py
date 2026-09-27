@@ -1,49 +1,47 @@
 import os
 import requests
+import threading
 from bs4 import BeautifulSoup
+from http.server import BaseHTTPRequestHandler, HTTPServer
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
-import threading
-from http.server import BaseHTTPRequestHandler, HTTPServer
-
-
-# The URL of the pitch booking page (Replace with the real website URL)
-URL = "https://atcsports.io/venues/comu-caba?sportIds=4&placeId=69y7pkx6v&dia=2026-09-12&horario=18%3A00&locationName=Buenos+Aires%2C+Ciudad+Aut%C3%B3noma+de+Buenos+Aires%2C+Argentina&placeSearched=69y7pkx6v"
 
 # --- YOUR WEB SCRAPER GOES HERE ---
 def check_pitch_availability(date, time_range):
-    # Headers make your script look like a regular web browser
+    # Extract the start time (e.g., "09:30" from "09:30-10:30") and replace ":" with "%3A"
+    start_time = time_range.split("-")[0].replace(":", "%3A")
+    
+    # The f-string inserts {date} and {start_time} directly into your dynamic URL
+    dynamic_url = f"https://atcsports.io/venues/comu-caba?sportIds=2&placeId=69y77cwtd&dia={date}&horario={start_time}&locationName=San+Mart%C3%ADn%2C+Provincia+de+Buenos+Aires%2C+Argentina&placeSearched=69y77cwtd"
+    
     headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
     }
     
     try:
-        # Note: In the future, you will need to update this logic so the URL 
-        # or the search actually uses your 'date' and 'time_range' variables!
-        response = requests.get(URL, headers=headers)
+        response = requests.get(dynamic_url, headers=headers)
         response.raise_for_status() # Check for HTTP errors
         
         soup = BeautifulSoup(response.text, 'html.parser')
         
-        # --- CRITICAL STEP ---
-        # Inspect the booking website's HTML to find exactly what element represents an open slot.
-        available_slots = soup.find_all('button', class_='btn-book-now')
+        # Look for the green React span indicating an available slot
+        available_slots = soup.find_all('span', class_='available')
         
         if available_slots:
-            print(f"Found {len(available_slots)} available slots for {date}!")
+            print(f"Found {len(available_slots)} available slots for {date}!", flush=True)
             return True
             
-        print(f"No slots available for {date} at {time_range} right now.")
+        print(f"No slots available for {date} at {time_range} right now.", flush=True)
         return False
         
     except requests.exceptions.RequestException as e:
-        print(f"Error fetching the webpage: {e}")
+        print(f"Error fetching the webpage: {e}", flush=True)
         return False
 
 # --- TRIGGERED WHEN YOU TYPE /check ---
 async def check_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
-        # context.args captures the words you type after the command (e.g., /check 2026-09-20 18:00-20:00)
+        # context.args captures the words you type after the command (e.g., /check 2026-09-29 09:30-10:30)
         date = context.args[0]
         time_range = context.args[1]
         
@@ -100,19 +98,8 @@ async def stop_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     await update.message.reply_text("Timer stopped.")
 
-if __name__ == '__main__':
-    # Using your token directly for local testing
-    bot_token = "8997472269:AAEUrwPpZAGdqhgBuZLuebNaCcoD748CZkk"
-    
-    app = ApplicationBuilder().token(bot_token).build()
-    
-    app.add_handler(CommandHandler("check", check_command))
-    app.add_handler(CommandHandler("stop", stop_command))
-    
-    print("Bot is online and listening...")
-    app.run_polling()
 
-
+# --- DUMMY SERVER TO KEEP RENDER AWAKE ---
 class DummyServer(BaseHTTPRequestHandler):
     def do_GET(self):
         self.send_response(200)
@@ -120,10 +107,8 @@ class DummyServer(BaseHTTPRequestHandler):
         self.wfile.write(b"Bot is alive!")
 
 def keep_alive():
-    # Render sets the PORT environment variable automatically
+    # Render assigns a port dynamically; we catch it here and bind to 0.0.0.0
     port = int(os.environ.get("PORT", 10000))
-    
-    # Explicitly bind to 0.0.0.0 so Render can see it!
     server = HTTPServer(('0.0.0.0', port), DummyServer)
     print(f"Dummy server listening on port {port}...", flush=True)
     server.serve_forever()
@@ -132,7 +117,7 @@ if __name__ == '__main__':
     # Start the dummy web server in the background
     threading.Thread(target=keep_alive, daemon=True).start()
     
-    # Grab the token securely
+    # Grab the token securely from Render's Environment Variables
     bot_token = os.environ.get("TELEGRAM_BOT_TOKEN")
     
     app = ApplicationBuilder().token(bot_token).build()
