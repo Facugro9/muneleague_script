@@ -1,4 +1,4 @@
 requests
-beautifulsoup4
-python-telegram-bot[job-queue]
+python-telegram-bot[job-queue]>=21.0
+tzdata
 
